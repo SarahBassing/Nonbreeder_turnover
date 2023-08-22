@@ -187,19 +187,7 @@
   plot(Full_Map)
   dev.off()
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+   
   #'  -------------------------------------
   ####  Format data for tables & plotting  ####
   #'  -------------------------------------
@@ -340,7 +328,7 @@
     geom_point(stat = "identity", aes(col = predictor), size = 2.5, position = position_dodge(width = 0.4)) +
     scale_color_manual(values = wes_palette("AsteroidCity1", n = 3)) +
     theme_bw() +
-    ylab("Change in number of nonbreeders in pack") +
+    ylab("Change in number of nonbreeders in group") +
     xlab("Breeder status") +
     facet_wrap(~model, #scales = "free_x",
                labeller = labeller(model = model.labs)) +
