@@ -54,6 +54,8 @@
                  Z.density + Z.harvest_rate + Z.X2yr_helpers_to_pup_r_t, data = NB_status)
   summary(NBM_BM)
   
+  mod_list <- list(NBF_BF, NBM_BF, NBF_BM, NBM_BM)
+  save(mod_list, file = "./Outputs/helper_turnover_mod_list.R")
   
   ####  Residual checks  ####
   #'  -------------------
