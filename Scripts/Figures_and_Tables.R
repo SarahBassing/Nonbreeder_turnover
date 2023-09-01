@@ -35,19 +35,31 @@
   usa_wgs84 <- st_transform(usa, "+proj=longlat +datum=WGS84 +no_defs")
   id_wgs84 <- st_transform(id, "+proj=longlat +datum=WGS84 +no_defs")
   
-  #'  Reformat DEM raster for mapping
-  dem <- rast("./Shapefiles/IDFG spatial data/Elevation__10m2.tif"); crs(dem)
-  dem_low <- aggregate(dem, 100); res(dem_low)
-  writeRaster(dem_low, file = "./Shapefiles/National Elevation Dataset (NED) NAD83/DEM_100m_res.tiff", overwrite = TRUE)
-  dem_low_wgs84 <- project(dem_low, "+proj=longlat +datum=WGS84 +no_defs")
-  #'  Crop low rez dem to extent of ID shapefile
-  v <- vect(id_wgs84)
-  dem_low_crop <- crop(dem_low_wgs84, v, mask = TRUE)
+  #'  Load rendezvous site RSF
+  rsf <- rast("./Shapefiles/RS_RSF/rsf_08b_10b1.img"); crs(rsf); res(rsf)
+  low_rsf <- aggregate(rsf, 10); res(low_rsf)
+  # rsf_wgs84 <- project(rsf, "+proj=longlat +datum=WGS84 +no_defs")
+  # writeRaster(rsf_wgs84, file = "./Shapefiles/RS_RSF/RS_RSF_wgs84.tiff", overwrite = TRUE)
+  rsf_wgs84 <- rast("./Shapefiles/RS_RSF/RS_RSF_wgs84.tiff")  
+  low_rsf_wgs84 <- project(low_rsf, "+proj=longlat +datum=WGS84 +no_defs")
+  #'  Crop to extent of study area GMUs
+  v <- vect(sa_gmu_wgs84)
+  # rsf_wgs84_crop <- crop(rsf_wgs84, v, mask = TRUE, overwrite = TRUE)
+  low_rsf_wgs84_crop <- crop(low_rsf_wgs84, v, mask = TRUE, overwrite = TRUE)
+  
+  #' #'  Reformat DEM raster for mapping
+  #' dem <- rast("./Shapefiles/IDFG spatial data/Elevation__10m2.tif"); crs(dem)
+  #' dem_low <- aggregate(dem, 100); res(dem_low)
+  #' writeRaster(dem_low, file = "./Shapefiles/National Elevation Dataset (NED) NAD83/DEM_100m_res.tiff", overwrite = TRUE)
+  #' dem_low_wgs84 <- project(dem_low, "+proj=longlat +datum=WGS84 +no_defs")
+  #' #'  Crop low rez dem to extent of ID shapefile
+  #' v <- vect(id_wgs84)
+  #' dem_low_crop <- crop(dem_low_wgs84, v, mask = TRUE)
   
   #'  Define projections
-  gmu_proj <- crs(sa_gmu) 
-  id_proj <- crs(id)
-  wgs84 <- crs(sa_gmu_wgs84) 
+  (gmu_proj <- st_crs(sa_gmu)) 
+  (id_proj <- st_crs(id))
+  (wgs84 <- st_crs(sa_gmu_wgs84)) 
   
   #'  Spatial extent of study area GMUS
   st_bbox(sa_gmu_wgs84)
@@ -58,6 +70,8 @@
   pal <- wes_palette("AsteroidCity2", 5, type = "discrete")
   wes_palette("AsteroidCity3", 4, type = "discrete")
   # pal4 <- c("#FBA72A", "#CD7A5C", "#5785C1")
+  wes_palette("Zissou1", 10, type = "continuous") 
+  pal_lifeaquatic <- wes_palette("Zissou1", 10, type = "continuous")
   
   
   #'  --------------------------------
@@ -122,8 +136,14 @@
   #####  Map #3  #####
   #'  Plot close up of study areas
   zoomed_in_gmus <- ggplot() +
-    geom_spatraster(data = dem_low_crop, alpha = 0.75) +
-    scale_fill_continuous(low = "gray90", high = "gray15", na.value = "transparent") +
+    geom_sf(data = id_wgs84, fill = "gray85", color = "gray50", size = 0.5) +
+    geom_spatraster(data = low_rsf_wgs84) + #, alpha = 0.75 #data = low_rsf_wgs84_crop rsf_wgs84 low_rsf_wgs84
+    scale_fill_gradientn(colours = pal_lifeaquatic, na.value = "transparent",
+                         labels = c("Low probability", "Mid probability", "High probability"),
+                         breaks = c(1, 5, 10)) + #breaks = c(0, 2.0, 4.0, 6.0, 8.0, 10.0)) + #
+    # scale_fill_continuous(low = "gray90", high = "gray35", na.value = "transparent",
+    #                       labels = c("Low probability", "Mid probability", "High probability"),
+    #                       breaks = c(1, 5, 10)) +
     geom_sf(data = sa_gmu_wgs84, color = "black", fill = NA, size = 0.75, show.legend = FALSE) + #fill = NA, 
     #'  Constrain plot to study areas plus some room on the side & bottom
     coord_sf(xlim = c(-117.2, -113.25), ylim = c(43.75, 48.25), expand = TRUE) + #43.94041, 48.06903
@@ -135,7 +155,7 @@
           axis.text.y = element_text(size = 16, colour = "black"), 
           legend.title = element_text(size = 18),
           legend.text = element_text(size = 16)) +
-    labs(x = "Longitude", y = "Latitude", fill = "Elevation (m)") +
+    labs(x = "Longitude", y = "Latitude", fill = "Predicted pup- \nrearing habitat") + #fill = "Elevation (m)"
     theme(legend.justification = c(1, 0)) + 
     #'  Add north arrow
     annotation_north_arrow(location = "bl", which_north = "true", 
@@ -150,8 +170,8 @@
   #'  Requires "cowplot" package
   #'  Don't use png or other calls to save while plotting- formatting gets messed up
   #'  Use export option in Plot window and formatting holds
-  tiff(file = "./Outputs/Figures/StudyAreaMap_v1.tiff",
-       units = "in", width = 7, height = 9, res = 800, compress = 'lzw')
+  # tiff(file = "./Outputs/Figures/StudyAreaMap_v1.tiff",
+  #      units = "in", width = 7, height = 9, res = 800, compress = 'lzw')
   StudyArea_Map <- ggdraw(ID_study_areas) + 
     draw_plot(
       {
@@ -167,9 +187,9 @@
       height = 0.55) +
     theme(panel.background = element_rect(fill = "white", color = "black"))
   plot(StudyArea_Map)
-  dev.off()
+  # dev.off()
   
-  tiff(file = "./Outputs/Figures/StudyAreaMap_v2.tiff",
+  tiff(file = "./Outputs/Figures/StudyAreaMap_rsf3.tiff",
        units = "in", width = 10, height = 11, res = 800, compress = 'lzw')
   Full_Map <- ggdraw(zoomed_in_gmus) +
     draw_plot(
